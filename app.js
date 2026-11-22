@@ -15,6 +15,8 @@ Object.assign(copy.pt,{collageEyebrow:'UM OLHAR SOBRE O ACERVO',collageTitle:'Li
 Object.assign(copy.en,{collageEyebrow:'A LOOK AT THE COLLECTION',collageTitle:'Available books,<br><em>in another light.</em>',collagePsychology:'Psychology & psychoanalysis',collageLiterature:'Literature & stories',collageHumanities:'History & society',collageIdeas:'Cinema, science & ideas',contactQuoteTitle:'Contact and shipping quote',contactQuoteText:'Enter the delivery postal code. A message will be prepared in your email or WhatsApp app; the site does not send or store it.',contactEmail:'Request by email ↗',contactWhatsapp:'Request on WhatsApp ↗',contactConfigMissing:'Edit site-config.js with the correct email and WhatsApp number before sharing the page.',shippingOrigin:'Reference origin: Juiz de Fora, MG — example city postal code 36000-000.',shippingApiNote:'This page prepares a quote request. Automatic pricing requires a shipping integration and the packed parcel weight and dimensions.',demoCep:'Delivery postal code',cepInvalid:'Enter a valid delivery CEP with 8 digits.'});
 Object.assign(copy.pt,{factFirstPublication:'Primeira publicação',factAuthor:'Sobre o autor',factRelated:'Outros livros deste autor no acervo',factAuthorWorks:'Também conhecido por',factEdition:'Sobre esta edição',factCollection:'Mais nesta categoria',factSource:'Fonte da informação ↗'});
 Object.assign(copy.en,{factFirstPublication:'First published',factAuthor:'About the author',factRelated:'Other books by this author here',factAuthorWorks:'Also known for',factEdition:'About this edition',factCollection:'More in this category',factSource:'Information source ↗'});
+Object.assign(copy.pt,{suggestedPrice:'ESTIMATIVA — NEGOCIE COM ANA',priceNote:'Estimativa de referência. Confirme com Ana o preço negociado, a disponibilidade e o frete antes de pagar.',priceUnresearched:'Faixa estimada de referência, sujeita a negociação com Ana. Não é um preço final.',contactQuoteText:'Converse com Ana sobre o exemplar, negocie o valor e peça o frete. O CEP é opcional para iniciar a conversa.',buyDemo:'Falar com Ana sobre este livro',contactWhatsapp:'Conversar com Ana no WhatsApp ↗'});
+Object.assign(copy.en,{suggestedPrice:'ESTIMATE — NEGOTIATE WITH ANA',priceNote:'Reference estimate. Confirm the agreed price, availability and shipping with Ana before paying.',priceUnresearched:'Estimated reference range, subject to negotiation with Ana. This is not a final price.',contactQuoteText:'Ask Ana about this copy, agree on a price and request shipping. A postal code is optional to start a conversation.',buyDemo:'Ask Ana about this book',contactWhatsapp:'Chat with Ana on WhatsApp ↗'});
 
 const genreEn = {'Idiomas':'Languages','Música':'Music','Saúde':'Health','Filosofia':'Philosophy','Bem-estar':'Wellness','Literatura':'Literature','Biografia':'Biography','Ciências humanas':'Humanities','Psicologia':'Psychology','Poesia':'Poetry','Autoconhecimento':'Self-development','Relacionamentos':'Relationships','Educação':'Education','Psicanálise':'Psychoanalysis','Teatro':'Theater','Economia':'Economics','História':'History','Viagem':'Travel','Tecnologia':'Technology','Arte e design':'Art & design','Comunicação':'Communication','Política':'Politics','Ciência':'Science','Cinema':'Cinema','Arquitetura':'Architecture','Hobbies':'Hobbies'};
 const descriptions = {
@@ -104,9 +106,10 @@ const genreName=g=>state.lang==='en'?(genreEn[g]||g):g;
 const activeBooks=()=>BOOKS.filter(b=>b.status==='available');
 // Stock is keyed by copy ID, so selling one of two identical titles keeps both positions.
 for(const book of BOOKS){const status=window.ESTANTE_STOCK?.[book.id];if(['available','sold'].includes(status))book.status=status;}
+for(const book of BOOKS){const price=window.ESTANTE_PRICES?.[book.id];if(typeof price==='number'&&Number.isFinite(price)&&price>0)book.suggestedPrice=price;}
 const matches=b=>(!state.genre||b.genre===state.genre)&&(!state.query||`${b.title} ${b.author} ${b.genre}`.toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(state.query));
 const formatPrice=n=>new Intl.NumberFormat(state.lang==='en'?'en-US':'pt-BR',{style:'currency',currency:'BRL'}).format(n);
-const displayPrice=b=>b.suggestedPrice?formatPrice(b.suggestedPrice):`${formatPrice(b.priceRange[0])}–${formatPrice(b.priceRange[1])}`;
+const displayPrice=b=>(b.suggestedPrice?formatPrice(b.suggestedPrice):`${formatPrice(b.priceRange[0])}–${formatPrice(b.priceRange[1])}`)+` (${state.lang==='pt'?'estimativa':'estimate'})`;
 const plainDescription=b=>descriptions[b.title]?.[state.lang]||resolvedMetadata.get(b.id)?.synopsis||t('photoNote');
 const metadataCache=new Map();
 const resolvedMetadata=new Map();
@@ -287,6 +290,7 @@ function applyLanguage(){
   $('#bay-label').textContent=`${t('bay').toUpperCase()} ${String(state.bay).padStart(2,'0')}`;
   $('#shelf-frame').setAttribute('aria-label',state.lang==='pt'?'Livros organizados em quatro prateleiras':'Books arranged on four shelves');
   populateGenres();renderShelves();updateStats();updateFurnitureContactLinks();
+  window.EstanteCart?.render();
   if(state.active&&$('#book-dialog').open){
     const book=state.active;
     fillDialog(book);
@@ -405,15 +409,14 @@ function updateBookContactLinks(){
   $('#shipping-origin').textContent=t('shippingOrigin').replace('36000-000',origin);
   const subject=state.lang==='pt'?`Interesse em ${book.title} — Estante da Ana`:`Interest in ${book.title} — Estante da Ana`;
   const body=state.lang==='pt'?`Olá! Tenho interesse no livro “${book.title}”, de ${book.author}.\n\nMeu CEP para entrega: ${cep||'vou informar depois'}.\nOrigem de referência: Juiz de Fora/MG, CEP ${origin}.\n\nPor favor, confirme o estado do exemplar, o preço final e o valor/prazo do frete.`:`Hello! I’m interested in “${book.title}” by ${book.author}.\n\nDelivery postal code: ${cep||'I will provide it later'}.\nReference origin: Juiz de Fora, MG, postal code ${origin}.\n\nPlease confirm the copy’s condition, final price and shipping cost/delivery time.`;
-  const validCep=cep.replace(/\D/g,'').length===8;
-  updateContactLink('contact-email','email',subject,body,validCep);updateContactLink('contact-whatsapp','whatsapp',subject,body,validCep);
+  updateContactLink('contact-email','email',subject,body);updateContactLink('contact-whatsapp','whatsapp',subject,body);
 }
 function updateFurnitureContactLinks(){
   const subject=state.lang==='pt'?'Interesse na estante — Estante da Ana':'Interest in the bookcase — Estante da Ana';
   const body=state.lang==='pt'?'Olá! Tenho interesse na estante anunciada por R$ 4.000. Poderia informar medidas, estado, retirada/entrega e confirmar o material?':'Hello! I’m interested in the bookcase listed for R$ 4,000. Could you share its dimensions, condition, pickup/delivery details and confirm the material?';
   updateContactLink('furniture-contact-email','email',subject,body);updateContactLink('furniture-contact-whatsapp','whatsapp',subject,body);
 }
-function showContactSetupIfNeeded(event){if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();const inBookDialog=$('#book-dialog').open,status=inBookDialog?$('#demo-result'):$('#furniture-contact-result');if(status)status.textContent=inBookDialog&&$('#demo-cep').value.replace(/\D/g,'').length!==8?t('cepInvalid'):t('contactConfigMissing');}}
+function showContactSetupIfNeeded(event){if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();const status=$('#book-dialog').open?$('#demo-result'):$('#furniture-contact-result');if(status)status.textContent=state.lang==='pt'?'O contato de Ana ainda está sendo configurado. Tente novamente em breve.':'Ana’s contact is being configured. Please try again later.';}}
 function fillDialog(book){
   const dialog=$('#book-dialog');dialog.style.setProperty('--cover-color',book.color);dialog.style.setProperty('--cover-text',contrast(book.color));
   dialog.classList.toggle('long-title',book.title.length>48);

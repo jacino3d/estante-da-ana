@@ -34,3 +34,15 @@ O site não recebe nem armazena CEPs ou mensagens de compradores. Ao clicar para
 Use HTTP para o visualizador 3D: `python -m http.server 8765`, depois `http://localhost:8765`. Abrir index.html diretamente pode bloquear módulos 3D. No celular, o link público HTTPS funciona normalmente. Deslize as prateleiras para ver os títulos e toque para abrir. Se WebGL não estiver disponível, a capa em HTML é exibida.
 
 Fontes oficiais: https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site e https://docs.github.com/en/pages/getting-started-with-github-pages/securing-your-github-pages-site-with-https
+
+## Carrinho, preços estimados e PIX
+
+O carrinho armazena somente os códigos dos exemplares no navegador, sem CEP ou dados pessoais. Quantidades são limitadas ao estoque disponível. Ele calcula um subtotal ou faixa estimada; frete e total final dependem de confirmação com Ana. Carrinho não é reserva nem pedido confirmado.
+
+Para editar preços: abra `manage-inventory.html`, localize o exemplar e altere **Estimativa em R$**. Baixe o arquivo atualizado e substitua `inventory-status.js` no GitHub. Ele contém `ESTANTE_STOCK` (disponibilidade) e `ESTANTE_PRICES` (estimativas por exemplar). Cada commit em `main` publica a mudança automaticamente. Preço vazio usa a referência/faixa original. Use sempre o arquivo atual do repositório para não sobrescrever vendas ou preços anteriores.
+
+O WhatsApp usa o domínio oficial `wa.me`, com mensagem codificada e abertura em nova aba protegida por `noopener noreferrer`. O comprador revisa e envia a mensagem no aplicativo; o site não a envia automaticamente. O número de Ana precisa ser configurado em `site-config.js`. Número de telefone em link público não fica secreto.
+
+SEDEX/PAC neste checkout são preferências para cotação com Ana, não tarifas calculadas. Para cálculo real, precisamos do CEP exato de coleta, pesos dos livros, tamanho/peso das embalagens e acesso a um serviço de frete. Tokens devem ficar em um backend, nunca no GitHub ou JavaScript público. O GitHub Pages continua servindo a interface estática.
+
+PIX é solicitado a Ana após negociação. Ela envia cobrança/QR Code com o valor final pelo banco ou provedor escolhido, e confirma o recebimento. Para automatizar cobrança e confirmação, escolher um provedor PIX, integrar um backend com segredos protegidos e webhook, e calcular valores no servidor. Não gerar pagamento automático baseado somente nas estimativas deste catálogo.
