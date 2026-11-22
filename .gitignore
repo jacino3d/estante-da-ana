@@ -9,3 +9,4 @@ ref/2026*.jpg
 !.env.example
 node_modules/
 .dev.vars*
+.wrangler/

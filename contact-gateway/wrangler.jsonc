@@ -1,9 +1,10 @@
 {
   "name": "estante-da-ana-contato",
+  "account_id": "3d4be36377904deed1c3df6664637b8e",
   "main": "worker.mjs",
   "compatibility_date": "2026-11-22",
   "workers_dev": true,
   "observability": {"enabled": false},
-  "vars": {"TURNSTILE_SITE_KEY": ""},
+  "vars": {"TURNSTILE_SITE_KEY": "0x4AAAAAAGNLsmmx9R_WnwPN"},
   "ratelimits": [{"name":"CONTACT_LIMITER","namespace_id":"1001","simple":{"limit":12,"period":60}}]
 }
