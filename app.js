@@ -410,7 +410,7 @@ function updateContactLink(id,kind,subject,body,enabled=true){
 function updateBookContactLinks(){
   const book=state.active;if(!book)return;
   const subject=state.lang==='pt'?`Interesse em ${book.title} — Estante da Ana`:`Interest in ${book.title} — Estante da Ana`;
-  const body=(state.lang==='pt'?`Olá, Ana! Tenho interesse no livro “${book.title}”, de ${book.author} (${book.id}). Estimativa: ${displayPrice(book)}. Podemos confirmar a disponibilidade, o preço e combinar a entrega?`:`Hello Ana! I’m interested in “${book.title}” by ${book.author} (${book.id}). Estimate: ${displayPrice(book)}. Could we confirm availability, price and delivery?`)+'\n\nhttps://jacino3d.github.io/estante-da-ana/';
+  const body=state.lang==='pt'?`Olá, Ana! Tenho interesse no livro “${book.title}”, de ${book.author} (${book.id}). Estimativa: ${displayPrice(book)}. Podemos confirmar a disponibilidade, o preço e combinar a entrega?`:`Hello Ana! I’m interested in “${book.title}” by ${book.author} (${book.id}). Estimate: ${displayPrice(book)}. Could we confirm availability, price and delivery?`;
   updateContactLink('buy-button','whatsapp',subject,body);updateContactLink('contact-whatsapp','whatsapp',subject,body);
 }
 function updateFurnitureContactLinks(){

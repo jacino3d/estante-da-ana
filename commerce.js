@@ -52,7 +52,7 @@ function renderCart(){
 }
 function updateCartContacts(){
   const books=cartBooks(),lines=books.map(b=>`• ${b.title} (${b.id}) — ${displayPrice(b)}`);
-  const body=cartText('Olá, Ana! Tenho interesse nestes livros:','Hello Ana! I’m interested in these books:')+`\n\n${lines.join('\n')}\n\n${cartText('Subtotal estimado','Estimated subtotal')}: ${estimateRange(sumEstimates(books))}\n`+cartText('Podemos confirmar a disponibilidade, negociar os valores e combinar entrega e PIX?','Could we confirm availability, agree on prices, and arrange delivery and PIX?')+'\n\nhttps://jacino3d.github.io/estante-da-ana/';
+  const body=cartText('Olá, Ana! Tenho interesse nestes livros:','Hello Ana! I’m interested in these books:')+`\n\n${lines.join('\n')}\n\n${cartText('Subtotal estimado','Estimated subtotal')}: ${estimateRange(sumEstimates(books))}\n`+cartText('Podemos confirmar a disponibilidade, negociar os valores e combinar entrega e PIX?','Could we confirm availability, agree on prices, and arrange delivery and PIX?');
   updateContactLink('cart-whatsapp','whatsapp','Pedido — Estante da Ana',body,!!books.length);
 }
 function continueBrowsing(){cartDialog.close();$('#acervo').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
