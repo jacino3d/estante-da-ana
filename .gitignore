@@ -1,0 +1,10 @@
+dist/
+release/
+*.zip
+books/
+research/
+preview-*.png
+ref/2026*.jpg
+.env*
+!.env.example
+node_modules/
