@@ -6,6 +6,20 @@ const headers={
 };
 const reply=(text,status=200,extra={})=>new Response(text,{status,headers:{...headers,'Content-Type':'text/plain; charset=utf-8',...extra}});
 const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const sameOriginPost=(request,url)=>{
+  const origin=request.headers.get('Origin');
+  if(origin){
+    try{
+      const parsed=new URL(origin);
+      if(parsed.protocol==='https:'&&parsed.hostname===url.hostname)return true;
+    }catch{}
+  }
+  const site=request.headers.get('Sec-Fetch-Site');
+  if(site)return site==='same-origin';
+  const referer=request.headers.get('Referer');
+  try{return !!referer&&new URL(referer).origin===url.origin;}catch{return false;}
+};
+const errorPage=(title,message)=>'<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+escapeHtml(title)+' — Estante da Ana</title><style>body{margin:0;background:#f2ede4;color:#35251c;font:17px/1.6 system-ui}main{max-width:560px;margin:12vh auto;padding:24px}h1{font:36px Georgia}a{display:inline-block;margin-top:18px;color:#70462d}</style><main><h1>'+escapeHtml(title)+'</h1><p>'+escapeHtml(message)+'</p><a href="/">← Voltar à página de contato</a></main></html>';
 async function boundedBody(request){
   const reader=request.body?.getReader();if(!reader)return '';
   let size=0;const chunks=[];
@@ -26,7 +40,7 @@ export default {
       return reply(html,200,{'Content-Type':'text/html; charset=utf-8'});
     }
     if(request.method!=='POST'||url.pathname!=='/open')return reply('Não encontrado.',404);
-    if(request.headers.get('Origin')!==url.origin)return reply('Origem inválida.',403);
+    if(!sameOriginPost(request,url))return reply(errorPage('Não foi possível continuar','Volte à página de contato, atualize a verificação e tente novamente.'),403,{'Content-Type':'text/html; charset=utf-8'});
     if(!request.headers.get('Content-Type')?.startsWith('application/x-www-form-urlencoded'))return reply('Formato inválido.',415);
     let form;try{form=new URLSearchParams(await boundedBody(request));}catch{return reply('Solicitação grande demais.',413);}
     const token=form.get('cf-turnstile-response')||'',text=form.get('text')||'';

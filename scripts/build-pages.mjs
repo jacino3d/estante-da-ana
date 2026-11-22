@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const dist=path.join(root,'dist');
 await mkdir(dist,{recursive:true});
-const files=['index.html','style.css','app.js','commerce.js','book3d.js','site-config.js','inventory-status.js'];
+const files=['index.html','style.css','app.js','commerce.js','book3d.js','site-config.js','inventory-status.js','manage-inventory.html','inventory-manager.js'];
 for(const file of files)await copyFile(path.join(root,file),path.join(dist,file));
 // Source photographs and research are intentionally excluded from public output.
 let catalog=await readFile(path.join(root,'catalog.js'),'utf8');
