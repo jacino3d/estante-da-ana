@@ -35,7 +35,11 @@ export default {
     const token=form.get('cf-turnstile-response')||'',text=form.get('text')||'';
     const name=(form.get('name')||'').replace(/[\u0000-\u001f\u007f]/g,' ').replace(/\s+/g,' ').trim();
     if(!token||token.length>2048||text.length>4000||!name||name.length>80)return reply('Informe seu nome, conclua a verificação e tente novamente.',400);
-    const message=`Nome: ${name}\n\n${text}`;
+    let personalized=text;
+    if(/^Olá, Ana!\s*/i.test(text))personalized=text.replace(/^Olá, Ana!\s*/i,`Olá, eu sou ${name}, `).replace(', Tenho interesse',', tenho interesse');
+    else if(/^Hello Ana!\s*/i.test(text))personalized=text.replace(/^Hello Ana!\s*/i,`Hello, I am ${name}, `).replace(', I’m interested',', and I’m interested');
+    else personalized=`Olá, eu sou ${name}. ${text}`;
+    const message=personalized;
     const tokenKey=await digest(token),messageKey=await digest(message),now=Date.now();
     for(const [key,entry] of recentlyVerified)if(entry.expires<=now)recentlyVerified.delete(key);
     const cacheKey=new Request(`${url.origin}/_verified/${tokenKey}`);
