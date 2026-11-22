@@ -17,6 +17,19 @@ async function boundedBody(request){
 export default {
   async fetch(request,env){
     const url=new URL(request.url);
+    // Cloudflare Access protects this path before it reaches the Worker.
+    // Only the editor bundle is present in the static assets directory.
+    if(url.pathname==='/admin'||url.pathname.startsWith('/admin/')){
+      if(url.pathname==='/admin')return Response.redirect(`${url.origin}/admin/`,302);
+      const response=await env.ASSETS.fetch(request);
+      const responseHeaders=new Headers(response.headers);
+      responseHeaders.set('Cache-Control','private, no-store');
+      responseHeaders.set('X-Content-Type-Options','nosniff');
+      responseHeaders.set('Referrer-Policy','no-referrer');
+      responseHeaders.set('X-Frame-Options','DENY');
+      responseHeaders.set('Content-Security-Policy',"default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+      return new Response(response.body,{status:response.status,statusText:response.statusText,headers:responseHeaders});
+    }
     if(!env.PHONE||!/^55[1-9]\d[2-9]\d{7,8}$/.test(env.PHONE)||!env.TURNSTILE_SECRET||!env.TURNSTILE_SITE_KEY||!env.CONTACT_LIMITER)return reply('Contato ainda não configurado.',503);
     if(!['/','/open'].includes(url.pathname))return reply('Não encontrado.',404);
     if(!['GET','POST'].includes(request.method))return reply('Método não permitido.',405,{Allow:'GET, POST'});

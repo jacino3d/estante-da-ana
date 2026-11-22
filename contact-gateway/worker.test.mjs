@@ -3,7 +3,18 @@ import assert from 'node:assert/strict';
 import worker from './worker.mjs';
 const origin='https://contact.example.test';
 const env={PHONE:'5532999999999',TURNSTILE_SECRET:'test-secret',TURNSTILE_SITE_KEY:'test-site-key',CONTACT_LIMITER:{limit:async()=>({success:true})}};
-const post=(values={})=>new Request(`${origin}/open`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(values)});
+const post=(values={})=>new Request(`${origin}/open`,{method:'POST',headers:{Origin:origin,'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({name:'Teste',...values})});
+test('editor assets are isolated behind the private admin route',async()=>{
+  let requestedUrl='';
+  const env={ASSETS:{fetch:async request=>{requestedUrl=request.url;return new Response('editor',{headers:{'Content-Type':'text/html'}});}}};
+  const redirected=await worker.fetch(new Request(`${origin}/admin`),env);
+  assert.equal(redirected.status,302);assert.equal(redirected.headers.get('Location'),`${origin}/admin/`);
+  const page=await worker.fetch(new Request(`${origin}/admin/`),env);
+  assert.equal(await page.text(),'editor');assert.equal(new URL(requestedUrl).pathname,'/admin/');
+  assert.equal(page.headers.get('Cache-Control'),'private, no-store');
+  assert.match(page.headers.get('Content-Security-Policy'),/frame-ancestors 'none'/);
+  assert.equal((await worker.fetch(new Request(`${origin}/admin-other`),env)).status,503);
+});
 test('number is withheld until successful server verification',async()=>{
   const unconfigured=await worker.fetch(new Request(origin),{});assert.equal(unconfigured.status,503);
   const page=await worker.fetch(new Request(`${origin}/?text=${encodeURIComponent('<script>alert(1)</script>')}`),env);
@@ -19,6 +30,6 @@ test('number is withheld until successful server verification',async()=>{
     globalThis.fetch=async()=>Response.json({success:true,hostname:new URL(origin).hostname,action:'whatsapp'});
     const accepted=await worker.fetch(post({'cf-turnstile-response':'verified',text:'Livro & autor'}),env);
     assert.equal(accepted.status,303);assert.equal(accepted.headers.get('Cache-Control'),'no-store, private');
-    const destination=new URL(accepted.headers.get('Location'));assert.equal(destination.hostname,'wa.me');assert.equal(destination.pathname,`/${env.PHONE}`);assert.equal(destination.searchParams.get('text'),'Livro & autor');
+    const destination=new URL(accepted.headers.get('Location'));assert.equal(destination.hostname,'wa.me');assert.equal(destination.pathname,`/${env.PHONE}`);assert.equal(destination.searchParams.get('text'),'Olá, eu sou Teste. Livro & autor');
   }finally{globalThis.fetch=original;}
 });

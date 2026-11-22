@@ -4,7 +4,7 @@ Site público estático em português e inglês, publicado pelo GitHub Pages. O 
 
 ## Estoque e preços
 
-O editor local está em `manage-inventory.html`. Abra esse arquivo no computador, marque exemplares vendidos ou ajuste estimativas, exporte `inventory-status.js` e publique esse arquivo no GitHub para atualizar a estante. O editor não grava alterações sozinho nem tem acesso para publicar no GitHub. Não compartilhe uma versão hospedada publicamente do editor; o acesso privado via Cloudflare Access ainda depende da ativação do Zero Trust.
+O editor privado está em `https://estante-da-ana-contato.jcphillips3d.workers.dev/admin/` e é protegido pelo Cloudflare Access, com permissão somente para `jcphillips3d@gmail.com`. Ele marca exemplares vendidos ou ajusta estimativas e exporta `inventory-status.js`; depois, publique esse arquivo no GitHub para atualizar a estante. O editor não publica por conta própria. Ele não faz parte do site público do GitHub Pages.
 
 Cada exemplar tem um código estável. Não remova nem reordene entradas de `INVENTORY_RAW`; exemplares novos vão ao final. Use sempre a versão mais recente de `inventory-status.js` ao editar.
 

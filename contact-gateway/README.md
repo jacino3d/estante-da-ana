@@ -17,7 +17,18 @@ The Worker limits requests, bounds submitted text, escapes page content, sends n
 
 Use `wrangler.jsonc` and deploy from this directory with `npx wrangler deploy`. Keep `PHONE`, `TURNSTILE_SECRET`, and the Turnstile widget's allowed hostname aligned with the Worker hostname. Update `site-config.js` only if the public Worker URL changes.
 
-The stock editor is intentionally excluded from the public Pages build while private access is being configured. A static page password is not a security boundary; protect editor access through Cloudflare Access or keep it local.
+The stock editor is excluded from the public Pages build. Cloudflare Access protects `/admin*` on this Worker and allows only the configured editor email. The private editor is served from the Worker's static asset binding, not GitHub Pages.
+
+To rebuild and deploy the editor after changing the catalog or editor files, run these commands from the repository root:
+
+```powershell
+node scripts/build-pages.mjs
+node scripts/build-private-editor.mjs
+Set-Location contact-gateway
+npx wrangler deploy
+```
+
+Open the editor at `https://estante-da-ana-contato.jcphillips3d.workers.dev/admin/`. Cloudflare Access sends a one-time sign-in code to the allowlisted email. After changing stock, use the editor's download button and publish the updated `inventory-status.js` through the GitHub repository so the public shop reflects the change.
 
 ## Limits
 
