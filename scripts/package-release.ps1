@@ -9,7 +9,7 @@ try {
   Get-ChildItem -LiteralPath (Join-Path $projectRoot 'dist') -Force | Copy-Item -Destination $stage -Recurse
   foreach ($name in @('manage-inventory.html','inventory-manager.js','.gitignore','PUBLICAR.md')) { Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage }
   Copy-Item -LiteralPath (Join-Path $projectRoot 'PUBLICAR.md') -Destination (Join-Path $stage 'README.md')
-  foreach ($name in @('scripts','.github')) { Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage -Recurse }
+  foreach ($name in @('scripts','.github','contact-gateway')) { Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $stage -Recurse }
   $archive = Join-Path $projectRoot ('release/estante-da-ana-github-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.zip')
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $zip = [System.IO.Compression.ZipFile]::Open($archive,[System.IO.Compression.ZipArchiveMode]::Create)

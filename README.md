@@ -46,3 +46,9 @@ O WhatsApp usa o domínio oficial `wa.me`, com mensagem codificada e abertura em
 SEDEX/PAC neste checkout são preferências para cotação com Ana, não tarifas calculadas. Para cálculo real, precisamos do CEP exato de coleta, pesos dos livros, tamanho/peso das embalagens e acesso a um serviço de frete. Tokens devem ficar em um backend, nunca no GitHub ou JavaScript público. O GitHub Pages continua servindo a interface estática.
 
 PIX é solicitado a Ana após negociação. Ela envia cobrança/QR Code com o valor final pelo banco ou provedor escolhido, e confirma o recebimento. Para automatizar cobrança e confirmação, escolher um provedor PIX, integrar um backend com segredos protegidos e webhook, e calcular valores no servidor. Não gerar pagamento automático baseado somente nas estimativas deste catálogo.
+
+## Atualização do carrinho e contato protegido
+
+O carrinho permite um item por título, com remoção e retorno à estante. O ícone fica fixo no canto superior direito somente enquanto há itens. Capas usam a mesma consulta do preview 3D; se não houver imagem verificável, há uma miniatura ilustrativa identificada, em vez de espaço vazio. O formulário de CEP/frete e os links de e-mail foram retirados; entrega e preço final são combinados com Ana.
+
+O link de WhatsApp prepara uma mensagem com títulos, códigos, estimativas e link da estante. Não envia a mensagem sozinho. Para reduzir scraping, foi preparado `contact-gateway/`: um Worker separado que valida Turnstile no servidor antes de revelar o destino WhatsApp. A conta Cloudflare, o widget e o telefone privado ainda precisam ser configurados. Leia `contact-gateway/README.md`. Em `site-config.js`, publique somente `whatsappGatewayUrl`; o telefone e a chave secreta ficam nos secrets do Worker. Sem configuração, os links continuam desativados. Não há falsa verificação de humano no site.

@@ -260,6 +260,7 @@ const BOOK_OVERRIDES = {
 // Researched edition records are visual references, not identifications of the
 // physical copies. The ISBN must still be checked on each book before sale.
 const REFERENCE_EDITIONS = {
+  'Introducing Psychoanalysis': { author: 'Ivan Ward; Oscar Zarate', candidateIsbn: '9781848318748', coverUrl: 'covers/introducing-psychoanalysis-icon.jpg', publisher: 'Icon Books', publicationYear: '2014', pages: 176, editionSource: 'https://www.iconbooks.com/ib-title/introducing-psychoanalysis-2/', synopsisSource: 'https://www.iconbooks.com/ib-title/introducing-psychoanalysis-2/' },
   'Teaching Listening Comprehension': { candidateIsbn: '9780521287814', editionSource: 'https://shop.cambridge.org/english/product/2700030585', synopsisSource: 'https://shop.cambridge.org/english/product/2700030585', publicationYear: '1984', publisher: 'Cambridge University Press' },
   'O universo elegante': { suggestedPrice: 36.90, priceSource: 'https://www.estantevirtual.com.br/livro/o-universo-elegante-079-1225-000-BK', candidateIsbn: '9788535900989', editionSource: 'https://www.companhiadasletras.com.br/9788535900989-o-universo-elegante-6036/p', synopsisSource: 'https://www.companhiadasletras.com.br/9788535900989-o-universo-elegante-6036/p', publicationYear: '2001', publisher: 'Companhia das Letras', pages: 480 },
   'Dead Aid': { candidateIsbn: '9780374532123', editionSource: 'https://us.macmillan.com/books/9780374532123/deadaid/', synopsisSource: 'https://us.macmillan.com/books/9780374532123/deadaid/', publisher: 'Farrar, Straus and Giroux' },

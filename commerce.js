@@ -1,71 +1,63 @@
-// The cart stores copy IDs only, never buyer/contact/CEP data. Quotes are not orders.
+// Cart storage contains only copy IDs. Each title is selectable once.
 let cartIds=[];
-try{const saved=JSON.parse(localStorage.getItem('ana-cart-v1')||'[]');if(Array.isArray(saved))cartIds=[...new Set(saved)].filter(id=>BOOKS.some(b=>b.id===id&&b.status==='available'));}catch{}
+try{const saved=JSON.parse(localStorage.getItem('ana-cart-v1')||'[]');if(Array.isArray(saved))cartIds=[...new Set(saved)];}catch{}
 const cartText=(pt,en)=>state.lang==='pt'?pt:en;
 const cartButton=document.createElement('button');cartButton.type='button';cartButton.className='cart-open';
-$('.site-header').append(cartButton);
+cartButton.innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 3h2l2.5 12h11l2-8H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg><span class="cart-count"></span>';
+document.body.append(cartButton);
 const catalogEstimate=document.createElement('p');catalogEstimate.className='estimate-warning';$('.filter-row').before(catalogEstimate);
 const cartDialog=document.createElement('dialog');cartDialog.className='cart-dialog';cartDialog.setAttribute('aria-labelledby','cart-heading');
-cartDialog.innerHTML='<div class="cart-heading"><h2 id="cart-heading"></h2><button type="button" class="cart-close" aria-label="Fechar carrinho">×</button></div><p class="estimate-warning" id="cart-estimate-note"></p><div id="cart-items"></div><div class="cart-totals"><span id="cart-subtotal-label"></span><strong id="cart-subtotal"></strong><span id="cart-freight-label"></span><strong id="cart-freight"></strong><span id="cart-total-label"></span><strong id="cart-total"></strong></div><div class="cart-checkout"><label><span id="cart-cep-label"></span><input id="cart-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" placeholder="00000-000"></label><label><span id="cart-service-label"></span><select id="cart-service"><option value="SEDEX">SEDEX</option><option value="PAC">PAC</option><option value="Retirada">Retirada em Juiz de Fora</option></select></label><p id="cart-shipping-note"></p><p class="pix-note" id="cart-pix-note"></p><div class="contact-actions"><a id="cart-whatsapp" href="#"></a><a id="cart-email" href="#"></a></div><p id="cart-result" role="status"></p></div>';
+cartDialog.innerHTML='<div class="cart-heading"><h2 id="cart-heading"></h2><button type="button" class="cart-close" aria-label="Fechar carrinho">×</button></div><p class="estimate-warning" id="cart-estimate-note"></p><div id="cart-items"></div><div class="cart-totals"><span id="cart-subtotal-label"></span><strong id="cart-subtotal"></strong></div><p id="cart-shipping-note"></p><div class="cart-checkout"><p class="pix-note" id="cart-pix-note"></p><div class="cart-footer-actions"><button type="button" class="cart-continue"></button><a id="cart-whatsapp" href="#"></a></div><p id="cart-result" role="status"></p></div>';
 document.body.append(cartDialog);
-const addButton=document.createElement('button');addButton.type='button';addButton.className='buy-button cart-add';
-$('#buy-button').before(addButton);
-function persistCart(){try{localStorage.setItem('ana-cart-v1',JSON.stringify(cartIds));}catch{}renderCart();}
+const addButton=document.createElement('button');addButton.type='button';addButton.className='buy-button cart-add';$('#buy-button').before(addButton);
+function cartKey(book){return `${book.title}|${book.author}`;}
+function normaliseCart(){const seen=new Set();cartIds=cartIds.filter(id=>{const book=BOOKS.find(b=>b.id===id&&b.status==='available');if(!book||seen.has(cartKey(book)))return false;seen.add(cartKey(book));return true;});}
+function persistCart(){normaliseCart();try{localStorage.setItem('ana-cart-v1',JSON.stringify(cartIds));}catch{}renderCart();}
 function cartBooks(){return cartIds.map(id=>BOOKS.find(b=>b.id===id&&b.status==='available')).filter(Boolean);}
 function sumEstimates(books){return books.reduce((sum,b)=>({min:sum.min+(b.suggestedPrice||b.priceRange[0]),max:sum.max+(b.suggestedPrice||b.priceRange[1])}),{min:0,max:0});}
 function estimateRange(sum){return sum.min===sum.max?formatPrice(sum.min):`${formatPrice(sum.min)}–${formatPrice(sum.max)}`;}
-function matchingCopies(book){return activeBooks().filter(b=>b.title===book.title&&b.author===book.author);}
-function addCopy(book){const next=matchingCopies(book).find(b=>!cartIds.includes(b.id));if(next){cartIds.push(next.id);persistCart();}return !!next;}
+function alreadyInCart(book){return cartBooks().some(item=>cartKey(item)===cartKey(book));}
+function cartCover(book){
+  const frame=document.createElement('div');frame.className='cart-cover';
+  const fallback=document.createElement('div');fallback.className='cart-cover-fallback';fallback.style.background=book.color;fallback.style.color=contrast(book.color);
+  const title=document.createElement('strong'),note=document.createElement('small');title.textContent=book.title;note.textContent=cartText('Capa ilustrativa','Illustrative cover');fallback.append(title,note);frame.append(fallback);
+  const img=document.createElement('img');img.alt=cartText(`Capa de referência: ${book.title}`,`Reference cover: ${book.title}`);img.hidden=true;frame.append(img);
+  img.onload=()=>{if(img.naturalWidth>20){img.hidden=false;fallback.hidden=true;}};
+  img.onerror=()=>{img.hidden=true;fallback.hidden=false;};
+  const initial=resolvedMetadata.get(book.id)?.cover||book.coverUrl;if(initial)img.src=initial;
+  // Same cached cover lookup as the 3D preview, including titles without a local coverUrl.
+  resolveCover(book).then(url=>{if(url&&frame.isConnected&&img.getAttribute('src')!==url)img.src=url;}).catch(()=>{});
+  return frame;
+}
 function renderCart(){
-  cartIds=cartIds.filter(id=>BOOKS.some(b=>b.id===id&&b.status==='available'));
-  const books=cartBooks(),sum=sumEstimates(books),rows=$('#cart-items');rows.replaceChildren();
-  cartButton.textContent=cartText(`Carrinho (${books.length})`,`Cart (${books.length})`);
-  $('#cart-heading').textContent=cartText('Seu carrinho','Your cart');
-  $('.cart-close').setAttribute('aria-label',cartText('Fechar carrinho','Close cart'));
-  $('#cart-estimate-note').textContent=cartText('Todos os valores são ESTIMATIVAS. Negocie com Ana o preço final dos livros e o frete. Adicionar ao carrinho não reserva o exemplar.','All prices are ESTIMATES. Agree on the final book prices and shipping with Ana. Adding a book does not reserve it.');
-  catalogEstimate.textContent=cartText('PREÇOS ESTIMADOS — valores de referência, sujeitos a negociação com Ana. Confirme preço final, disponibilidade e frete antes de pagar.','ESTIMATED PRICES — reference values, subject to negotiation with Ana. Confirm final prices, availability and shipping before paying.');
-  const groups=new Map();for(const book of books){const key=`${book.title}|${book.author}`;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(book);}
-  for(const copies of groups.values()){
-    const book=copies[0],row=document.createElement('article');row.className='cart-item';
-    if(book.coverUrl){const img=document.createElement('img');img.src=book.coverUrl;img.alt='';img.loading='lazy';row.append(img);}
-    const info=document.createElement('div'),title=document.createElement('h3'),author=document.createElement('p'),price=document.createElement('p'),controls=document.createElement('div');controls.className='cart-quantity';
-    title.textContent=book.title;author.textContent=book.author;price.textContent=`${estimateRange(sumEstimates(copies))} — ${cartText('estimativa','estimate')}`;
-    for(const [label,action,disabled] of [[cartText('Diminuir quantidade','Decrease quantity'),()=>{cartIds=cartIds.filter(id=>id!==copies.at(-1).id);persistCart();},false],[cartText('Aumentar quantidade','Increase quantity'),()=>addCopy(book),!matchingCopies(book).some(b=>!cartIds.includes(b.id))]]){
-      const button=document.createElement('button');button.type='button';button.textContent=label.includes('Diminuir')||label.includes('Decrease')?'−':'+';button.setAttribute('aria-label',`${label}: ${book.title}`);button.disabled=disabled;button.addEventListener('click',action);controls.append(button);
-      if(controls.children.length===1){const qty=document.createElement('span');qty.textContent=String(copies.length);controls.append(qty);}
-    }
-    const remove=document.createElement('button');remove.type='button';remove.textContent=cartText('Remover','Remove');remove.addEventListener('click',()=>{const ids=new Set(copies.map(b=>b.id));cartIds=cartIds.filter(id=>!ids.has(id));persistCart();});controls.append(remove);
-    info.append(title,author,price,controls);row.append(info);rows.append(row);
+  normaliseCart();const books=cartBooks(),rows=$('#cart-items');rows.replaceChildren();
+  cartButton.hidden=!books.length;$('.cart-count').textContent=String(books.length);cartButton.setAttribute('aria-label',cartText(`Abrir carrinho (${books.length})`,`Open cart (${books.length})`));
+  $('#cart-heading').textContent=cartText('Seu carrinho','Your cart');$('.cart-close').setAttribute('aria-label',cartText('Fechar carrinho','Close cart'));
+  $('#cart-estimate-note').textContent=cartText('Todos os valores são ESTIMATIVAS. Negocie com Ana o preço final dos livros. Adicionar ao carrinho não reserva o exemplar.','All prices are ESTIMATES. Agree on final book prices with Ana. Adding a book does not reserve it.');
+  catalogEstimate.textContent=cartText('PREÇOS ESTIMADOS — negocie com Ana. Confirme preço final, disponibilidade e entrega antes de pagar.','ESTIMATED PRICES — negotiate with Ana. Confirm final prices, availability and delivery before paying.');
+  for(const book of books){
+    const row=document.createElement('article');row.className='cart-item';row.append(cartCover(book));
+    const info=document.createElement('div'),title=document.createElement('h3'),author=document.createElement('p'),price=document.createElement('p'),remove=document.createElement('button');
+    title.textContent=book.title;author.textContent=book.author;price.textContent=`${estimateRange(sumEstimates([book]))} — ${cartText('estimativa','estimate')}`;
+    remove.type='button';remove.className='cart-remove';remove.textContent=cartText('Remover livro','Remove book');remove.setAttribute('aria-label',`${remove.textContent}: ${book.title}`);remove.addEventListener('click',()=>{cartIds=cartIds.filter(id=>id!==book.id);persistCart();});
+    info.append(title,author,price,remove);row.append(info);rows.append(row);
   }
-  if(!books.length){const empty=document.createElement('p');empty.textContent=cartText('Seu carrinho está vazio. Abra um livro para adicionar.','Your cart is empty. Open a book to add it.');rows.append(empty);}
-  $('#cart-subtotal-label').textContent=cartText('Subtotal estimado dos livros','Estimated book subtotal');$('#cart-subtotal').textContent=estimateRange(sum);
-  const pickup=$('#cart-service').value==='Retirada';
-  $('#cart-freight-label').textContent=cartText('Frete','Shipping');$('#cart-freight').textContent=pickup?cartText('Retirada — combinar com Ana','Pickup — arrange with Ana'):cartText('A cotar com Ana','Quote from Ana required');
-  $('#cart-total-label').textContent=cartText('Total final','Final total');$('#cart-total').textContent=cartText('Após negociação e confirmação','After agreement and confirmation');
-  $('#cart-cep-label').textContent=cartText('CEP de entrega','Delivery postal code');$('#cart-service-label').textContent=cartText('Preferência de entrega','Delivery preference');
-  $('#cart-service option[value="Retirada"]').textContent=cartText('Retirada em Juiz de Fora','Pickup in Juiz de Fora');
-  $('#cart-shipping-note').textContent=cartText('Origem: Juiz de Fora/MG. Ana confirma o valor e o prazo de SEDEX/PAC conforme CEP e embalagem. Nenhuma tarifa de frete foi calculada nesta página.','Ships from Juiz de Fora, MG. Ana confirms SEDEX/PAC cost and delivery time using the postal code and parcel details. This page has not calculated shipping.');
-  $('#cart-pix-note').textContent=cartText('Pagamento por PIX: após o acordo, Ana envia a cobrança do valor final pelo WhatsApp. Confira o nome do recebedor no banco antes de pagar.','PIX payment: after agreement, Ana sends a request for the final amount on WhatsApp. Check the recipient name in your bank app before paying.');
-  $('#cart-whatsapp').textContent=cartText('Negociar pedido e PIX no WhatsApp ↗','Discuss order and PIX on WhatsApp ↗');$('#cart-email').textContent=cartText('Enviar consulta por e-mail ↗','Inquire by email ↗');
-  addButton.textContent=state.active&&cartIds.includes(state.active.id)?cartText('No carrinho — ver itens','In cart — view items'):cartText('Adicionar ao carrinho','Add to cart');
+  if(!books.length){const empty=document.createElement('p');empty.textContent=cartText('Seu carrinho está vazio. Continue explorando para escolher um livro.','Your cart is empty. Continue browsing to choose a book.');rows.append(empty);}
+  $('#cart-subtotal-label').textContent=cartText('Subtotal ESTIMADO dos livros','ESTIMATED book subtotal');$('#cart-subtotal').textContent=estimateRange(sumEstimates(books));
+  $('#cart-shipping-note').textContent=cartText('Entrega ou retirada em Juiz de Fora: combine diretamente com Ana pelo WhatsApp.','Shipping or pickup in Juiz de Fora: arrange directly with Ana on WhatsApp.');
+  $('#cart-pix-note').textContent=cartText('Combine o valor final e a entrega com Ana. Ela enviará a cobrança PIX após o acordo.','Agree on final prices and delivery with Ana. She will send the PIX payment request afterwards.');
+  $('.cart-continue').textContent=cartText('← Continuar explorando','← Continue browsing');$('#cart-whatsapp').textContent=cartText('Consultar Ana no WhatsApp ↗','Ask Ana on WhatsApp ↗');
+  addButton.textContent=state.active&&alreadyInCart(state.active)?cartText('No carrinho — ver itens','In cart — view items'):cartText('Adicionar ao carrinho','Add to cart');
   updateCartContacts();
 }
 function updateCartContacts(){
-  const books=cartBooks(),cep=$('#cart-cep').value,service=$('#cart-service').value;
-  const lines=books.map(b=>`${b.id} · ${b.title} — ${displayPrice(b)}`);
-  const body=cartText('Olá, Ana! Quero negociar estes livros:','Hello Ana! I would like to discuss these books:')+`\n\n${lines.join('\n')}\n\n${cartText('Subtotal ESTIMADO','ESTIMATED subtotal')}: ${estimateRange(sumEstimates(books))}\n${cartText('Entrega','Delivery')}: ${service}\nCEP: ${cep||cartText('a informar','to be provided')}\n\n`+cartText('Por favor, confirme disponibilidade, preços negociados, frete e total final. Gostaria de pagar por PIX após combinarmos.','Please confirm availability, agreed prices, shipping and final total. I would like to pay by PIX once agreed.');
-  updateContactLink('cart-whatsapp','whatsapp','Pedido — Estante da Ana',body,!!books.length);updateContactLink('cart-email','email','Pedido — Estante da Ana',body,!!books.length);
+  const books=cartBooks(),lines=books.map(b=>`• ${b.title} (${b.id}) — ${displayPrice(b)}`);
+  const body=cartText('Olá, Ana! Tenho interesse nestes livros:','Hello Ana! I’m interested in these books:')+`\n\n${lines.join('\n')}\n\n${cartText('Subtotal estimado','Estimated subtotal')}: ${estimateRange(sumEstimates(books))}\n`+cartText('Podemos confirmar a disponibilidade, negociar os valores e combinar entrega e PIX?','Could we confirm availability, agree on prices, and arrange delivery and PIX?')+'\n\nhttps://jacino3d.github.io/estante-da-ana/';
+  updateContactLink('cart-whatsapp','whatsapp','Pedido — Estante da Ana',body,!!books.length);
 }
-cartButton.addEventListener('click',()=>{hidePreview();renderCart();cartDialog.showModal();});
-$('.cart-close').addEventListener('click',()=>cartDialog.close());cartDialog.addEventListener('click',event=>{if(event.target===cartDialog)cartDialog.close();});
-addButton.addEventListener('click',()=>{const book=state.active;if(!book||book.status==='sold')return;if(!cartIds.includes(book.id)){cartIds.push(book.id);persistCart();}$('#book-dialog').close();renderCart();cartDialog.showModal();});
-$('#cart-cep').addEventListener('input',event=>{event.target.value=event.target.value.replace(/\D/g,'').replace(/^(\d{5})(\d)/,'$1-$2');$('#cart-result').textContent='';updateCartContacts();});
-$('#cart-service').addEventListener('change',renderCart);
-for(const id of ['cart-whatsapp','cart-email'])$("#"+id).addEventListener('click',event=>{
-  if(!cartBooks().length){event.preventDefault();$('#cart-result').textContent=cartText('Adicione ao menos um livro.','Add at least one book.');return;}
-  const cep=$('#cart-cep').value.replace(/\D/g,'');if($('#cart-service').value!=='Retirada'&&cep.length!==8){event.preventDefault();$('#cart-result').textContent=cartText('Informe um CEP de entrega com 8 números ou selecione retirada.','Enter an 8-digit destination CEP or choose pickup.');return;}
-  if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();$('#cart-result').textContent=cartText('O contato de Ana ainda está sendo configurado. Tente novamente em breve.','Ana’s contact is being configured. Please try again later.');}
-});
-window.EstanteCart={render:renderCart};
-$('#book-dialog').addEventListener('toggle',renderCart);
-renderCart();
+function continueBrowsing(){cartDialog.close();$('#acervo').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'start'});}
+cartButton.addEventListener('click',()=>{hidePreview();renderCart();cartDialog.showModal();});$('.cart-close').addEventListener('click',()=>cartDialog.close());$('.cart-continue').addEventListener('click',continueBrowsing);
+cartDialog.addEventListener('click',event=>{if(event.target===cartDialog)cartDialog.close();});
+addButton.addEventListener('click',()=>{const book=state.active;if(!book||book.status==='sold')return;if(!alreadyInCart(book)){cartIds.push(book.id);persistCart();}$('#book-dialog').close();renderCart();cartDialog.showModal();});
+$('#cart-whatsapp').addEventListener('click',event=>{if(!cartBooks().length){event.preventDefault();$('#cart-result').textContent=cartText('Adicione ao menos um livro.','Add at least one book.');}else if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();$('#cart-result').textContent=cartText('O contato protegido de Ana ainda está sendo configurado.','Ana’s protected contact is being configured.');}});
+window.EstanteCart={render:renderCart};$('#book-dialog').addEventListener('toggle',renderCart);renderCart();

@@ -104,6 +104,8 @@ const displayLocation=book=>`${t('bay')} ${String(displayBay(book)).padStart(2,'
 const t=key=>copy[state.lang][key]||key;
 const genreName=g=>state.lang==='en'?(genreEn[g]||g):g;
 const activeBooks=()=>BOOKS.filter(b=>b.status==='available');
+Object.assign(copy.pt,{contactQuoteTitle:'Contato com Ana',contactQuoteText:'Combine disponibilidade, valores e entrega diretamente com Ana pelo WhatsApp.'});
+Object.assign(copy.en,{contactQuoteTitle:'Contact Ana',contactQuoteText:'Confirm availability, prices and delivery directly with Ana on WhatsApp.'});
 // Stock is keyed by copy ID, so selling one of two identical titles keeps both positions.
 for(const book of BOOKS){const status=window.ESTANTE_STOCK?.[book.id];if(['available','sold'].includes(status))book.status=status;}
 for(const book of BOOKS){const price=window.ESTANTE_PRICES?.[book.id];if(typeof price==='number'&&Number.isFinite(price)&&price>0)book.suggestedPrice=price;}
@@ -397,24 +399,24 @@ function updateContactLink(id,kind,subject,body,enabled=true){
   let href='';
   if(kind==='email'&&config.email&&!/exemplo\.com|SEU_EMAIL/i.test(config.email)&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.email))href=`mailto:${config.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   if(kind==='whatsapp'){
+    const gateway=config.whatsappGatewayUrl;
+    if(gateway){try{const url=new URL(gateway);if(url.protocol==='https:'&&!url.username&&!url.password){url.searchParams.set('text',body);href=url.href;}}catch{}}
     const phone=String(config.whatsapp||'').replace(/\D/g,'');
-    if(/^55[1-9]\d[2-9]\d{7,8}$/.test(phone))href=`https://wa.me/${phone}?text=${encodeURIComponent(body)}`;
+    if(!href&&/^55[1-9]\d[2-9]\d{7,8}$/.test(phone))href=`https://wa.me/${phone}?text=${encodeURIComponent(body)}`;
   }
   if(!enabled)href='';
   link.href=href||'#';link.target=href&&kind==='whatsapp'?'_blank':'';link.rel='noopener noreferrer';link.setAttribute('aria-disabled',String(!href));link.classList.toggle('contact-link-disabled',!href);
 }
 function updateBookContactLinks(){
   const book=state.active;if(!book)return;
-  const config=window.ESTANTE_CONFIG||{},cep=$('#demo-cep').value||'',origin=(config.freightOriginCep||'36000-000').replace(/\D/g,'').replace(/^(\d{5})(\d)$/,'$1-$2');
-  $('#shipping-origin').textContent=t('shippingOrigin').replace('36000-000',origin);
   const subject=state.lang==='pt'?`Interesse em ${book.title} — Estante da Ana`:`Interest in ${book.title} — Estante da Ana`;
-  const body=state.lang==='pt'?`Olá! Tenho interesse no livro “${book.title}”, de ${book.author}.\n\nMeu CEP para entrega: ${cep||'vou informar depois'}.\nOrigem de referência: Juiz de Fora/MG, CEP ${origin}.\n\nPor favor, confirme o estado do exemplar, o preço final e o valor/prazo do frete.`:`Hello! I’m interested in “${book.title}” by ${book.author}.\n\nDelivery postal code: ${cep||'I will provide it later'}.\nReference origin: Juiz de Fora, MG, postal code ${origin}.\n\nPlease confirm the copy’s condition, final price and shipping cost/delivery time.`;
-  updateContactLink('contact-email','email',subject,body);updateContactLink('contact-whatsapp','whatsapp',subject,body);
+  const body=(state.lang==='pt'?`Olá, Ana! Tenho interesse no livro “${book.title}”, de ${book.author} (${book.id}). Estimativa: ${displayPrice(book)}. Podemos confirmar a disponibilidade, o preço e combinar a entrega?`:`Hello Ana! I’m interested in “${book.title}” by ${book.author} (${book.id}). Estimate: ${displayPrice(book)}. Could we confirm availability, price and delivery?`)+'\n\nhttps://jacino3d.github.io/estante-da-ana/';
+  updateContactLink('buy-button','whatsapp',subject,body);updateContactLink('contact-whatsapp','whatsapp',subject,body);
 }
 function updateFurnitureContactLinks(){
   const subject=state.lang==='pt'?'Interesse na estante — Estante da Ana':'Interest in the bookcase — Estante da Ana';
   const body=state.lang==='pt'?'Olá! Tenho interesse na estante anunciada por R$ 4.000. Poderia informar medidas, estado, retirada/entrega e confirmar o material?':'Hello! I’m interested in the bookcase listed for R$ 4,000. Could you share its dimensions, condition, pickup/delivery details and confirm the material?';
-  updateContactLink('furniture-contact-email','email',subject,body);updateContactLink('furniture-contact-whatsapp','whatsapp',subject,body);
+  updateContactLink('furniture-contact-whatsapp','whatsapp',subject,body);
 }
 function showContactSetupIfNeeded(event){if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();const status=$('#book-dialog').open?$('#demo-result'):$('#furniture-contact-result');if(status)status.textContent=state.lang==='pt'?'O contato de Ana ainda está sendo configurado. Tente novamente em breve.':'Ana’s contact is being configured. Please try again later.';}}
 function fillDialog(book){
@@ -442,7 +444,7 @@ function fillDialog(book){
   $('#dialog-price-source').hidden=false;
   $('#dialog-price-source').textContent=book.priceSource?t('priceReference'):t('priceSearch');
   $('#dialog-price-source').href=book.priceSource||`https://www.estantevirtual.com.br/busca?q=${encodeURIComponent(`${book.title} ${book.author}`)}`;
-  $('#order-demo').hidden=true;$('#demo-result').textContent='';$('#demo-cep').value='';updateBookContactLinks();
+  $('#order-demo').hidden=true;$('#demo-result').textContent='';updateBookContactLinks();
 }
 function tiltShelf(event){
   const frame=$('#shelf-frame'),r=frame.getBoundingClientRect();
@@ -479,9 +481,8 @@ $('#shelf-zone').addEventListener('click',e=>{if(!e.target.closest('.shelf-frame
 $('#dialog-close').addEventListener('click',()=>$('#book-dialog').close());
 $('#book-dialog').addEventListener('close',()=>window.book3D?.hideDialog());
 $('#book-dialog').addEventListener('click',e=>{if(e.target===$('#book-dialog'))$('#book-dialog').close();});
-$('#buy-button').addEventListener('click',()=>{$('#order-demo').hidden=!$('#order-demo').hidden;});
-$('#demo-cep').addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').replace(/^(\d{5})(\d)/,'$1-$2');$('#demo-result').textContent='';updateBookContactLinks();});
-['contact-email','contact-whatsapp','furniture-contact-email','furniture-contact-whatsapp'].forEach(id=>$(`#${id}`).addEventListener('click',showContactSetupIfNeeded));
+$('#buy-button').addEventListener('click',event=>{if(event.currentTarget.getAttribute('aria-disabled')==='true'){event.preventDefault();$('#order-demo').hidden=false;showContactSetupIfNeeded(event);}});
+['contact-whatsapp','furniture-contact-whatsapp'].forEach(id=>$(`#${id}`).addEventListener('click',showContactSetupIfNeeded));
 document.querySelectorAll('.furniture-thumb').forEach(button=>button.addEventListener('click',()=>{
   const main=$('#furniture-main-image');main.src=button.dataset.image;main.alt=button.dataset.alt;
   document.querySelectorAll('.furniture-thumb').forEach(item=>item.classList.toggle('active',item===button));
