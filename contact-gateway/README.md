@@ -14,3 +14,7 @@ Fluxo: página da estante → página do Worker → Turnstile → POST com valid
 O número não é entregue no GET nem no código público. Após o visitante passar pela verificação, o número aparece no redirecionamento/WhatsApp. Isso reduz scraping simples, mas não impede uma pessoa ou automação que consiga passar pelo desafio de coletá-lo. Não há garantia de impedir phishing; um número exclusivo da loja continua sendo recomendável.
 
 Documentação: https://developers.cloudflare.com/turnstile/get-started/server-side-validation/ e https://developers.cloudflare.com/workers/configuration/secrets/
+
+## Contato protegido implantado
+
+O Worker está em https://estante-da-ana-contato.jcphillips3d.workers.dev/ . O site-config.js aponta para esse endereço. PHONE e TURNSTILE_SECRET ficam somente como secrets de produção na Cloudflare. A sitekey pública e o account_id no wrangler.jsonc não são credenciais secretas. Não copie PHONE ou TURNSTILE_SECRET para arquivos locais ou GitHub. Ainda é necessário o teste final do titular: passar a verificação no navegador e conferir o destinatário e a mensagem no WhatsApp, sem enviar automaticamente.
