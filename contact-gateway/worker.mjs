@@ -36,6 +36,7 @@ export default {
       if(!response.ok)return reply('Verificação indisponível. Tente novamente.',503);
       const check=await response.json();
       const errors=check['error-codes']||[];
+      console.log('turnstile_siteverify_result',{success:!!check.success,errorCodes:errors,hostname:check.hostname||'',action:check.action||''});
       if(errors.includes('invalid-input-secret'))return reply('A chave secreta do Turnstile no Cloudflare não corresponde a este widget. O administrador precisa atualizar o secret TURNSTILE_SECRET.',503);
       if(errors.includes('timeout-or-duplicate')||errors.includes('invalid-input-response'))return new Response(null,{status:303,headers:{...headers,Location:`/?retry=expired&text=${encodeURIComponent(text)}`}});
       if(!check.success)return reply('A Cloudflare não aceitou esta verificação. Atualize a página e tente novamente. Código: '+errors.join(', '),403);
