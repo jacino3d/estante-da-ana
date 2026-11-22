@@ -34,7 +34,12 @@ export default {
       const response=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:env.TURNSTILE_SECRET,response:token,remoteip:request.headers.get('CF-Connecting-IP')||undefined}),signal:AbortSignal.timeout(8000)});
       if(!response.ok)return reply('Verificação indisponível. Tente novamente.',503);
       const check=await response.json();
-      if(!check.success||check.hostname!==url.hostname||check.action!=='whatsapp')return reply('Verificação inválida ou expirada. Volte e tente novamente.',403);
+      const errors=check['error-codes']||[];
+      if(errors.includes('invalid-input-secret'))return reply('A chave secreta do Turnstile no Cloudflare não corresponde a este widget. O administrador precisa atualizar o secret TURNSTILE_SECRET.',503);
+      if(errors.includes('timeout-or-duplicate')||errors.includes('invalid-input-response'))return reply('Esta verificação expirou ou já foi usada. Volte, atualize a página e faça uma nova verificação.',403);
+      if(!check.success)return reply('A Cloudflare não aceitou esta verificação. Atualize a página e tente novamente. Código: '+errors.join(', '),403);
+      if(check.hostname!==url.hostname)return reply('O domínio permitido no widget Turnstile não corresponde ao contato. Confira a lista de domínios do widget no Cloudflare.',403);
+      if(check.action!=='whatsapp')return reply('A ação configurada no widget não corresponde. Atualize a página de contato e tente novamente.',403);
       return new Response(null,{status:303,headers:{...headers,Location:`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`}});
     }catch{return reply('Verificação indisponível. Tente novamente.',503);}
   }
