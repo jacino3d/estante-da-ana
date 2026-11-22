@@ -35,10 +35,14 @@ export default {
     if(!token||token.length>2048||text.length>4000)return reply('Conclua a verificação e tente novamente.',400);
     const tokenKey=await digest(token),messageKey=await digest(text),now=Date.now();
     for(const [key,entry] of recentlyVerified)if(entry.expires<=now)recentlyVerified.delete(key);
-    const previous=recentlyVerified.get(tokenKey);
+    const cacheKey=new Request(`${url.origin}/_verified/${tokenKey}`);
+    let previous=recentlyVerified.get(tokenKey);
+    if(!previous&&globalThis.caches?.default){
+      try{const cached=await caches.default.match(cacheKey);if(cached)previous=await cached.json();}catch{}
+    }
     if(previous){
       if(previous.messageKey!==messageKey)return reply('Esta verificação já foi usada. Volte e faça uma nova verificação.',403);
-      return new Response(null,{status:303,headers:{...headers,Location:previous.location}});
+      return new Response(null,{status:303,headers:{...headers,Location:`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`}});
     }
     try{
       const response=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:env.TURNSTILE_SECRET,response:token,remoteip:request.headers.get('CF-Connecting-IP')||undefined}),signal:AbortSignal.timeout(8000)});
@@ -50,9 +54,11 @@ export default {
       if(!check.success)return reply('A Cloudflare não aceitou esta verificação. Atualize a página e tente novamente. Código: '+errors.join(', '),403);
       if(check.hostname!==url.hostname)return reply('O domínio permitido no widget Turnstile não corresponde ao contato. Confira a lista de domínios do widget no Cloudflare.',403);
       if(check.action!=='whatsapp')return reply('A ação configurada no widget não corresponde. Atualize a página de contato e tente novamente.',403);
-      const location=`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`;
-      recentlyVerified.set(tokenKey,{messageKey,location,expires:now+120000});
-      return new Response(null,{status:303,headers:{...headers,Location:location}});
+      recentlyVerified.set(tokenKey,{messageKey,expires:now+120000});
+      if(globalThis.caches?.default){
+        try{await caches.default.put(cacheKey,new Response(JSON.stringify({messageKey}),{headers:{'Cache-Control':'public, max-age=120','Content-Type':'application/json'}}));}catch{}
+      }
+      return new Response(null,{status:303,headers:{...headers,Location:`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`}});
     }catch{return reply('Verificação indisponível. Tente novamente.',503);}
   }
 };
