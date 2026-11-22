@@ -6,6 +6,8 @@ const headers={
 };
 const reply=(text,status=200,extra={})=>new Response(text,{status,headers:{...headers,'Content-Type':'text/plain; charset=utf-8',...extra}});
 const escapeHtml=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+const recentlyVerified=new Map();
+const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),byte=>byte.toString(16).padStart(2,'0')).join('');
 async function boundedBody(request){
   const reader=request.body?.getReader();if(!reader)return '';
   let size=0;const chunks=[];
@@ -31,18 +33,26 @@ export default {
     let form;try{form=new URLSearchParams(await boundedBody(request));}catch{return reply('Solicitação grande demais.',413);}
     const token=form.get('cf-turnstile-response')||'',text=form.get('text')||'';
     if(!token||token.length>2048||text.length>4000)return reply('Conclua a verificação e tente novamente.',400);
+    const tokenKey=await digest(token),messageKey=await digest(text),now=Date.now();
+    for(const [key,entry] of recentlyVerified)if(entry.expires<=now)recentlyVerified.delete(key);
+    const previous=recentlyVerified.get(tokenKey);
+    if(previous){
+      if(previous.messageKey!==messageKey)return reply('Esta verificação já foi usada. Volte e faça uma nova verificação.',403);
+      return new Response(null,{status:303,headers:{...headers,Location:previous.location}});
+    }
     try{
       const response=await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:env.TURNSTILE_SECRET,response:token,remoteip:request.headers.get('CF-Connecting-IP')||undefined}),signal:AbortSignal.timeout(8000)});
       if(!response.ok)return reply('Verificação indisponível. Tente novamente.',503);
       const check=await response.json();
       const errors=check['error-codes']||[];
-      console.log('turnstile_siteverify_result',{success:!!check.success,errorCodes:errors,hostname:check.hostname||'',action:check.action||''});
       if(errors.includes('invalid-input-secret'))return reply('A chave secreta do Turnstile no Cloudflare não corresponde a este widget. O administrador precisa atualizar o secret TURNSTILE_SECRET.',503);
       if(errors.includes('timeout-or-duplicate')||errors.includes('invalid-input-response'))return new Response(null,{status:303,headers:{...headers,Location:`/?retry=expired&text=${encodeURIComponent(text)}`}});
       if(!check.success)return reply('A Cloudflare não aceitou esta verificação. Atualize a página e tente novamente. Código: '+errors.join(', '),403);
       if(check.hostname!==url.hostname)return reply('O domínio permitido no widget Turnstile não corresponde ao contato. Confira a lista de domínios do widget no Cloudflare.',403);
       if(check.action!=='whatsapp')return reply('A ação configurada no widget não corresponde. Atualize a página de contato e tente novamente.',403);
-      return new Response(null,{status:303,headers:{...headers,Location:`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`}});
+      const location=`https://wa.me/${env.PHONE}?text=${encodeURIComponent(text||'Olá, Ana!')}`;
+      recentlyVerified.set(tokenKey,{messageKey,location,expires:now+120000});
+      return new Response(null,{status:303,headers:{...headers,Location:location}});
     }catch{return reply('Verificação indisponível. Tente novamente.',503);}
   }
 };
